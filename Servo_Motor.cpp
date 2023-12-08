@@ -1,8 +1,12 @@
 #include "Servo_Motor.h"
 #include "Arduino.h"
+#include "HardwareSerial.h"
 
-Servo_Motor::Servo_Motor()
-{
+Servo_Motor::Servo_Motor(int dir1_pin, int dir2_pin, int pwm_pin)
+{   
+    pin_dir1=dir1_pin;
+    pin_dir2=dir2_pin;
+    pin_pwm=pwm_pin;
     pwm=0;
     direction=true;
 
@@ -14,8 +18,8 @@ Servo_Motor::~Servo_Motor()
 }
 
 void Servo_Motor::stopMotor(){
-    digitalWrite(Pin_IN1, LOW);
-    digitalWrite(Pin_IN2, LOW);
+    digitalWrite(pin_dir1, LOW);
+    digitalWrite(pin_dir2, LOW);
     delay(250);
 }
 
@@ -47,22 +51,31 @@ void Servo_Motor::setMotor(int pwm_in, bool direction_in){
         stopMotor();
     }
     if(direction){
-        digitalWrite(Pin_IN1, HIGH);
-        digitalWrite(Pin_IN2, LOW);
-        analogWrite(Pin_PWM, pwm_out);
+        digitalWrite(pin_dir1, HIGH);
+        digitalWrite(pin_dir2, LOW);
+        analogWrite(pin_pwm, pwm_out);
     }else{
-        digitalWrite(Pin_IN1, LOW);
-        digitalWrite(Pin_IN2, HIGH);
-        analogWrite(Pin_PWM, pwm_out);
+        digitalWrite(pin_dir1, LOW);
+        digitalWrite(pin_dir2, HIGH);
+        analogWrite(pin_pwm, pwm_out);
     }
 }
 
 void Servo_Motor::setupMotor(){
-    pinMode(Pin_IN1, OUTPUT);
-    pinMode(Pin_IN2, OUTPUT);
-    pinMode(Pin_PWM, OUTPUT);
+    pinMode(pin_dir1, OUTPUT);
+    pinMode(pin_dir2, OUTPUT);
+    pinMode(pin_pwm, OUTPUT);
 }
 
 float Servo_Motor::floatMap(float x, float in_min, float in_max, float out_min, float out_max){
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+void Servo_Motor::display_direction(HardwareSerial *Serial){
+    if (direction){
+     Serial->println("CW");
+  }else{
+     Serial->println("CCW");
+  }
+
 }

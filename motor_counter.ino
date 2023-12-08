@@ -1,12 +1,12 @@
 //here define pins if different
 #define Pin_LED 4
 #define Pin_OIntp 2
-#define Pin_IN1 8
-#define Pin_IN2 7
-#define Pin_PWM 9
+#define M1_dir1 8
+#define M1_dir2 7
+#define M1_pwm 9
 #define openings 8
 
-#define COMMANDS "Motor controls:\n'm<num>' - set motor to <num>% power\n'moff' - turn motor off, same as m0\n'm+' - set direction clockwise\n'm-' - set direction counterclockwise\n'mdir' - get direction\n'fmeas' - measure and display frequency\n'foff' - stop the frequency measurement\n'c<num>' - allow <num> motor turns\n'cstop' - stop counter\ncpause - pause counter\ncreset - reset counter.\nAny other command will stop the motor and reset the counter."
+#define COMMANDS "Motor controls:\n'm<num>' - set motor to <num>% power\n'moff' - turn motor off, same as m0\n'm+' - set direction clockwise\n'm-' - set direction counterclockwise\n'mdir' - get direction\n'fmeas' - measure and display frequency\n'foff' - stop the frequency measurement\n'c<num>' - allow <num> motor turns\n'cstart' - start the counter\n'cstop' - stop the counter\n'cpause' - pause the counter\n'crestart' - start again\n'cstatus' - display status.\nAny other command will stop the motor and reset the counter."
 
 #include "Servo_Motor.h"
 #include "Optic_Interrupt.h"
@@ -18,35 +18,22 @@ bool serial_event=false;//            in the main
 bool restart=true;//first run         in the main
 bool led_on;//here is stored if led is on or off
 
-Servo_Motor my_motor;
+Servo_Motor my_motor(M1_dir1, M1_dir2, M1_pwm);
 RPM my_rpm(&led_on);
 TurnCounter my_counter(&led_on);
 
-//main interpretation of direction
-void display_direction(){
-  if (my_motor.get_direction()){
-     Serial.println("CW");
-  }else{
-     Serial.println("CCW");
-  }
-}
-/*
-void Iterrupt_Action(){
-if (my_rpm.GetFreqMeas() || my_rpm.GetCounterRun()){
-        if (digitalRead(Pin_OIntp)==HIGH){
-            my_rpm.SetFrontEdge(true);
-        }else{
-            my_rpm.SetBackEdge(true);
-        }
-    }
-}
-*/
+
 //I like this approach better
 void Iterrupt_Action(){
     my_rpm.IRS_CHANGE();
     my_counter.IRS_CHANGE();
 }
 
+void counter_end(){
+  my_motor.stopMotor();
+  my_rpm.stop_freq_meas();
+  my_counter.stop_counter();
+}
 
 /*
  * Created by ArduinoGetStarted.com
@@ -69,45 +56,60 @@ void ProcessCommand(String *computerdata){
        case 'm':
         //change of motor direction
         if (computerdata->charAt(1)=='+'){
-          my_motor.setMotor(my_motor.get_pwm(),1);
+            my_motor.setMotor(my_motor.get_pwm(),1);
          //change of motor direction
          }else if (computerdata->charAt(1)=='-'){
-          my_motor.setMotor(my_motor.get_pwm(),0);
+            my_motor.setMotor(my_motor.get_pwm(),0);
          }else if (computerdata->substring(computerdata->indexOf("m")+1,computerdata->indexOf("m")+4)=="off"){
-          my_motor.stopMotor();
+            my_motor.stopMotor();
          }else if (computerdata->substring(computerdata->indexOf("m")+1,computerdata->indexOf("m")+4)=="dir"){
-          display_direction();
-         }else if (computerdata->substring(computerdata->indexOf("m")+1).toInt()<0){
+            my_motor.display_direction(&Serial);
+         }else if ((computerdata->substring(computerdata->indexOf("m")+1).toInt()<=0) & (computerdata->substring(computerdata->indexOf("m")+1)!="0")){
           //unallowed command
-           Serial.println("Command doesn't exist. Halting everyting.");
-           my_motor.stopMotor();
-           my_rpm.stop_freq_meas(false);
-           my_counter.stop_counter(false);
+            Serial.println("Command doesn't exist. Halting everyting.");
+            counter_end();
             //set count at inf
          }else{
-          my_motor.setMotor(computerdata->substring(computerdata->indexOf("m")+1).toInt(),my_motor.get_direction());
+            my_motor.setMotor(computerdata->substring(computerdata->indexOf("m")+1).toInt(),my_motor.get_direction());
          }
          break;
        case 'f':
          if (computerdata->substring(computerdata->indexOf("f")+1,computerdata->indexOf("f")+5)=="meas"){
-          my_rpm.start_freq_meas();
+            my_rpm.start_freq_meas();
          }else if (computerdata->substring(computerdata->indexOf("f")+1,computerdata->indexOf("f")+4)=="off"){
-          my_rpm.stop_freq_meas(my_counter.GetCounterStatus());
+            my_rpm.stop_freq_meas(my_counter.GetCounterStatus());
+         }else{
+           Serial.println("Command doesn't exist. Halting everyting.");
+          counter_end();
          }
 
          break;
       case 'c':
          if (computerdata->substring(computerdata->indexOf("c")+1,computerdata->indexOf("c")+6)=="reset"){
-            my_counter.start_counter();
+            my_counter.SetCurrentCounter(0);
+         }else if (computerdata->substring(computerdata->indexOf("c")+1,computerdata->indexOf("c")+8)=="restart"){
+            my_counter.SetCurrentCounter(0);
+            my_counter.start_counter(&counter_end);
+            //my_counter.start_counter();
          }else if (computerdata->substring(computerdata->indexOf("c")+1,computerdata->indexOf("c")+5)=="stop"){
             my_counter.stop_counter(my_rpm.GetFreqMeas());
+            my_counter.SetCurrentCounter(0);
+         }else if (computerdata->substring(computerdata->indexOf("c")+1,computerdata->indexOf("c")+6)=="start"){
+            my_counter.start_counter(&counter_end);
+         }else if (computerdata->substring(computerdata->indexOf("c")+1,computerdata->indexOf("c")+6)=="pause"){
+            my_counter.stop_counter(my_rpm.GetFreqMeas());
+         }else if (computerdata->substring(computerdata->indexOf("c")+1,computerdata->indexOf("c")+7)=="status"){
+            my_counter.display_status(&Serial);
+         }else if ((computerdata->substring(computerdata->indexOf("c")+1).toInt()<=0) & (computerdata->substring(computerdata->indexOf("c")+1)!="0")){
+            Serial.println("Command doesn't exist. Halting everyting.");
+            counter_end();
+         }else{
+            my_counter.SetCounter(computerdata->substring(computerdata->indexOf("c")+1).toInt());
          }
          break;
       default:
          Serial.println("Command doesn't exist. Halting everyting.");
-         my_motor.stopMotor();
-         my_rpm.stop_freq_meas(false);
-         my_counter.stop_counter(false);
+         counter_end();
          //set count ot inf
          Serial.println(COMMANDS);
          break;

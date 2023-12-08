@@ -10,14 +10,17 @@ class TurnCounter: public Optic_Interrupt
         virtual ~TurnCounter();
         
         
-        unsigned int GetCounterStatus() { return counter_running; }
-        unsigned int GetTotCounter() { return totCount; }
-        unsigned int GetCurentCounter() { return currentCount; }
-        void SetCounter(unsigned int val) { totCount = val; }
-        void start_counter();
-        void stop_counter(bool val);
+        unsigned int GetCounterStatus() { return counter_running; };
+        void display_status(HardwareSerial * Serial);
+        unsigned int GetTotCounter() { return totCount; };
+        unsigned int GetCurentCounter() { return currentCount; };
+        void SetCounter(unsigned int val) { totCount = val; };
+        void SetCurrentCounter(unsigned int val) {currentCount=val;};
+        void start_counter(void (*func)()=NULL);
+        void stop_counter(bool val=false);
         void main_counter(HardwareSerial * Serial);
         void IRS_CHANGE();
+        void (*counter_end_func)();
 
     protected:
 
@@ -27,6 +30,8 @@ class TurnCounter: public Optic_Interrupt
         unsigned int backCounter;
         bool backEdge;
         bool counter_running;//freq and counter class
+        bool init=true;
+        static void pass(){};
 };
 
 #endif // TURNCOUNTER_H

@@ -14,7 +14,7 @@ class RPM: public Optic_Interrupt
         float getFrontFreq(){return frontfreq;};
         float getBackFreq(){return backfreq;};
         void start_freq_meas();
-        void stop_freq_meas(bool val);
+        void stop_freq_meas(bool val=false);
         void main_freq(HardwareSerial * Serial);
         void IRS_CHANGE();
 
