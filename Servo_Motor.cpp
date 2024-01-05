@@ -74,6 +74,7 @@ float Servo_Motor::floatMap(float x, float in_min, float in_max, float out_min, 
 void Servo_Motor::display_direction(HardwareSerial *Serial){
     if (direction){
      Serial->println("CW");
+     //(*Serial).println("CW");
   }else{
      Serial->println("CCW");
   }
